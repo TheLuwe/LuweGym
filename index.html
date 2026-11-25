@@ -154,10 +154,11 @@ function setPhoto(f){
   img.onload=()=>{const n=256,c=document.createElement('canvas');c.width=c.height=n;const m=Math.min(img.width,img.height);c.getContext('2d').drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,n,n);S.photo=c.toDataURL('image/jpeg',.82);URL.revokeObjectURL(u);save();render()};
   img.onerror=()=>alert('Fotoğraf okunamadı.');img.src=u;
 }
-let AUTH=false;try{AUTH=localStorage.getItem('sh_auth')=='1'}catch(e){}
+let AUTH=false,AUTH_T=0;try{AUTH_T=+localStorage.getItem('sh_auth')||0}catch(e){}
+const authOk=()=>AUTH_T>0&&Date.now()-AUTH_T<10800000;
 function login(){
   const pw=document.getElementById('pw');
-  if(pw.value.trim()==='231423'){AUTH=true;S.view='home';try{localStorage.setItem('sh_auth','1')}catch(e){}render()}
+  if(pw.value.trim()==='231423'){AUTH_T=Date.now();S.view='home';try{localStorage.setItem('sh_auth',String(AUTH_T))}catch(e){}render()}
   else{document.getElementById('err').textContent='Şifre yanlış, tekrar dene.';pw.value='';pw.focus()}
 }
 const save=()=>{try{localStorage.setItem('sh_v1',JSON.stringify(S))}catch(e){}};
@@ -263,8 +264,9 @@ function graph(){
 
 const root=document.getElementById('app');
 function render(){
+  AUTH=authOk();
   if(!AUTH){
-    root.innerHTML='<div class="login"><div class="avatar" aria-hidden="true">'+AV()+'</div><h1 style="margin:0">Enes</h1><p class="empty" style="margin:0">Devam etmek için şifreni gir</p><input id="pw" type="password" inputmode="numeric" autocomplete="off" placeholder="Şifre" aria-label="Şifre"><div class="err" id="err" role="alert"></div><button class="btn" data-act="login">Giriş</button></div>';
+    root.innerHTML='<div class="login"><div class="avatar" aria-hidden="true">'+AV()+'</div><h1 style="margin:0">Enes</h1><p class="empty" style="margin:0">Devam etmek için şifreni gir</p><input id="pw" type="password" inputmode="numeric" autocomplete="off" placeholder="Şifre" aria-label="Şifre"><div class="err" id="err" role="alert"></div></div>';
     document.getElementById('pw').focus();return;
   }
   const VW={home:['Anasayfa',home],train:['Antrenman',train],setup:['Profil',setup]},cur=VW[S.view]||VW.home;
@@ -290,7 +292,9 @@ function refresh(){
 }
 
 root.addEventListener('input',e=>{
-  const t=e.target,d=t.dataset;if(!d.k)return;
+  const t=e.target,d=t.dataset;
+  if(t.id=='pw'){if(t.value.trim().length>=6)login();return}
+  if(!d.k)return;
   const raw=t.value.replace(',','.'),num=raw===''||isNaN(parseFloat(raw))?null:parseFloat(raw);
   if(d.k=='metric'){S.metric=+t.value;save();render();return}
   if(d.k=='bw')S.bw=num;
@@ -302,6 +306,7 @@ root.addEventListener('input',e=>{
   }
   save();refresh();
 });
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!authOk())render()});
 root.addEventListener('keydown',e=>{
   if(e.key=='Enter'&&e.target.id=='pw'){e.preventDefault();login();return}
   if(e.key!='Enter'||e.target.tagName!='INPUT')return;
@@ -313,7 +318,7 @@ root.addEventListener('click',e=>{
   if(d.act=='login'){login();return}
   if(d.act=='photo'){document.getElementById('photo').click();return}
   if(d.act=='photoDel'){S.photo=null;save();render();return}
-  if(d.act=='logout'){AUTH=false;try{localStorage.removeItem('sh_auth')}catch(x){}render();return}
+  if(d.act=='logout'){AUTH=false;AUTH_T=0;try{localStorage.removeItem('sh_auth')}catch(x){}render();return}
   if(d.info){const p=document.getElementById('info-'+d.info),o=b.getAttribute('aria-expanded')=='true';b.setAttribute('aria-expanded',String(!o));p.hidden=o;if(!o&&!p.innerHTML)p.innerHTML=guide(d.info);return}
   if(d.chk){const k=S.wk+'-'+d.chk;S.done[k]=!S.done[k];save();render();return}
   if(d.wk){S.wk=+d.wk;save();render();window.scrollTo(0,0);return}
